@@ -99,6 +99,18 @@ class DashboardFragment : Fragment() {
         val clockInTimeString = sharedPreferences.getString("clockInTimeString", "-")
         val clockOutTimeString = sharedPreferences.getString("clockOutTimeString", "-")
         val attendanceStatus = sharedPreferences.getString("attendanceStatus", "absent")
+
+        if(sharedPreferences.getString("toast","").equals("clockOut")){
+            Toast.makeText(requireContext(),"Succesfully clock out at ${clockOutTimeString}",Toast.LENGTH_SHORT).show()
+        } else if(sharedPreferences.getString("toast","").equals("clockIn")){
+            Toast.makeText(requireContext(),"Succesfully clock out at ${clockInTimeString}",Toast.LENGTH_SHORT).show()
+        } else if(sharedPreferences.getString("toast","").equals("error")){
+            Toast.makeText(requireContext(),"You already completed clock in and clock out",Toast.LENGTH_SHORT).show()
+        }
+        val editor = sharedPreferences.edit()
+        editor.putString("toast", "")
+        editor.apply()
+
         clockInTimeTV.text = clockInTimeString
         clockOutTimeTV.text = clockOutTimeString
         attendanceStatusTV.text = attendanceStatus

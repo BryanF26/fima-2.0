@@ -11,6 +11,7 @@ import android.util.Log
 import android.view.View
 import android.widget.Button
 import android.widget.ImageView
+import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
@@ -69,7 +70,7 @@ class AttendanceActivity : AppCompatActivity() {
 
             clockInOut(dashboardViewModel)
             val intent = Intent(this, MainActivity::class.java)
-            startActivity(intent)
+            startActivity(intent    )
         }
 
 //         Request permissions and start camera
@@ -167,15 +168,20 @@ class AttendanceActivity : AppCompatActivity() {
         // Update the adapter with new data
 
         val sharedPreferences = this.getSharedPreferences("MyPrefs", Context.MODE_PRIVATE)
+        val editor = sharedPreferences.edit()
         var clockInTimeString = sharedPreferences.getString("clockInTimeString", null)
         var clockOutTimeString = sharedPreferences.getString("clockOutTimeString", null)
 
         val calendar = Calendar.getInstance()
         if(clockInTimeString == null) {
             clockInTimeString = formatter.format(calendar.time).toString()
+            editor.putString("toast", "clockIn")
         } else if (clockOutTimeString == null){
             clockOutTimeString = formatter.format(calendar.time).toString()
+            editor.putString("toast", "clockOut")
         } else {
+            editor.putString("toast", "error")
+            editor.apply()
             return
         }
         val clockInTime: Date? = clockInTimeString?.let { formatter.parse(it) }
@@ -208,7 +214,7 @@ class AttendanceActivity : AppCompatActivity() {
                 "Invalid"
             }
         }
-        val editor = sharedPreferences.edit()
+
         editor.putString("clockInTimeString", clockInTimeString)
         editor.putString("clockOutTimeString", clockOutTimeString)
         editor.putString("attendanceStatus", attendanceStatus)
