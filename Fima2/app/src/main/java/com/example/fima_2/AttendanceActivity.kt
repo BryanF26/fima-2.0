@@ -3,17 +3,16 @@ package com.example.fima_2
 import android.Manifest
 import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import android.content.pm.PackageManager
+import android.location.Address
+import android.location.Geocoder
 import android.net.Uri
-import android.os.Build
 import android.os.Bundle
-import android.util.Log
 import android.view.View
 import android.widget.Button
 import android.widget.ImageView
-import android.widget.Toast
-import androidx.activity.enableEdgeToEdge
-import androidx.annotation.RequiresApi
+import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageCapture
@@ -23,26 +22,21 @@ import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import androidx.lifecycle.MutableLiveData
-import androidx.lifecycle.ViewModelProvider
-import com.example.fima_2.R
-import com.example.fima_2.ui.dashboard.Attendance
-import com.example.fima_2.ui.dashboard.DashboardViewModel
 import java.io.File
 import java.text.SimpleDateFormat
-import java.time.format.DateTimeFormatter
 import java.util.*
 
 class AttendanceActivity : AppCompatActivity() {
 
     private lateinit var imageCapture: ImageCapture
     private lateinit var viewFinder: PreviewView
+    private lateinit var locationNowTextView: TextView
     private lateinit var capturedImageView: ImageView
     private lateinit var outputDirectory: File
     private lateinit var captureButton: Button
     private lateinit var clockButton: Button
+    private lateinit var sharedPreferences: SharedPreferences
 
-    private lateinit var dashboardViewModel: DashboardViewModel
     private companion object {
         const val CAMERA_PERMISSION_REQUEST_CODE = 200
         const val FILENAME_FORMAT = "yyyy-MM-dd-HH-mm-ss-SSS"
@@ -52,15 +46,18 @@ class AttendanceActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         supportActionBar?.hide()
         setContentView(R.layout.activity_attendance)
-
-        dashboardViewModel = ViewModelProvider(this).get(DashboardViewModel::class.java)
+        sharedPreferences = this.getSharedPreferences("MyPrefs", Context.MODE_PRIVATE)
 
         // Initialize viewFinder
         viewFinder = findViewById(R.id.capturedImagePreview)  // Ensure the ID matches your XML
         clockButton =  findViewById(R.id.attendanceSubmitButton)
         captureButton = findViewById(R.id.takePhotoButton)
         capturedImageView = findViewById(R.id.capturedImageView)
+        locationNowTextView = findViewById(R.id.locationNowTV)
 
+        val lat = sharedPreferences.getString("lat", null)?.toDouble()
+        val lon = sharedPreferences.getString("lon", null)?.toDouble()
+        displayPlaceFromLatLon(lat, lon)
 
         // Request permissions and start camera
         requestCameraPermissions()
@@ -69,9 +66,10 @@ class AttendanceActivity : AppCompatActivity() {
         // Create the output directory for photos
         outputDirectory = getOutputDirectory()
 
+        clockButton.isEnabled = false
         clockButton.setOnClickListener {
 
-            clockInOut(dashboardViewModel)
+            clockInOut()
             val intent = Intent(this, MainActivity::class.java)
             startActivity(intent    )
         }
@@ -87,12 +85,17 @@ class AttendanceActivity : AppCompatActivity() {
     private fun onCaptureButtonClick() {
         if (captureButton.text == "Capture") {
             takePhoto()
+            clockButton.isEnabled = true
+            if(sharedPreferences.getString("clockInTimeString", "").equals("")) clockButton.text = "clock in"
+            else if(sharedPreferences.getString("clockOutTimeString", "").equals("")) clockButton.text = "clock out"
+
         } else {
             // If retaking, restart camera and reset UI
             startCamera()
             captureButton.text = "Capture"
             capturedImageView.visibility = View.GONE
             viewFinder.visibility = View.VISIBLE
+            clockButton.isEnabled = false
         }
     }
 
@@ -163,13 +166,10 @@ class AttendanceActivity : AppCompatActivity() {
 
 
 
-    fun clockInOut(dashboardViewModel: DashboardViewModel){
-//        val dashboardViewModel =
-//            ViewModelProvider(this).get(DashboardViewModel::class.java)
+    fun clockInOut(){
         val formatter = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
         // Update the adapter with new data
 
-        val sharedPreferences = this.getSharedPreferences("MyPrefs", Context.MODE_PRIVATE)
         val editor = sharedPreferences.edit()
         var clockInTimeString = sharedPreferences.getString("clockInTimeString", null)
         var clockOutTimeString = sharedPreferences.getString("clockOutTimeString", null)
@@ -221,7 +221,26 @@ class AttendanceActivity : AppCompatActivity() {
         editor.putString("clockOutTimeString", clockOutTimeString)
         editor.putString("attendanceStatus", attendanceStatus)
         editor.apply()
-//        dashboardViewModel.editAttendance(clockInTimeString, clockOutTimeString, attendanceStatus)
-//        Log.d("exit", "${dashboardViewModel.attendance.value?.clockInTime}")
+    }
+
+    fun displayPlaceFromLatLon(lat: Double?, lon: Double?){
+        val geocoder = Geocoder(this, Locale.getDefault())
+        try {
+            var addresses: MutableList<Address>? = null
+            if (lat != null && lon != null) {
+                addresses = geocoder.getFromLocation(lat, lon, 1)
+            }
+            if (addresses != null) {
+                if (addresses.isNotEmpty()) {
+                    // Extract just the locality or place name
+                    val placeName = addresses[0].locality ?: addresses[0].adminArea ?: "Unknown Location"
+                    locationNowTextView.text = placeName // Display the place name in the TextView
+                } else {
+                    locationNowTextView.text = "Location not found"
+                }
+            }
+        } catch (e: Exception) {
+            locationNowTextView.text = "Unable to fetch location"
+        }
     }
 }

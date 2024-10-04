@@ -3,6 +3,7 @@ package com.example.fima_2.ui.dashboard
 import android.Manifest
 import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.os.Handler
@@ -16,8 +17,6 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.core.app.ActivityCompat
 import androidx.fragment.app.Fragment
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
 import com.example.fima_2.AttendanceActivity
 import com.example.fima_2.LeaveRequestActivity
 import com.example.fima_2.databinding.FragmentDashboardBinding
@@ -53,14 +52,14 @@ class DashboardFragment : Fragment() {
     private val LOCATION_PERMISSION_REQUEST_CODE = 1
     private lateinit var clockHandler: Handler
     private lateinit var clockRunnable: Runnable
+    private lateinit var sharedPreferences: SharedPreferences
+
 
     // This property is only valid between onCreateView and
     // onDestroyView.
     private val binding get() = _binding!!
     private var lat:Double = 0.0
     private var lon:Double = 0.0
-
-    private lateinit var dashboardViewModel: DashboardViewModel
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -84,6 +83,7 @@ class DashboardFragment : Fragment() {
         clockOutTimeTV = binding.clockOutTimeTV
         attendanceStatusTV = binding.attendanceStatusTV
         requestLeaveBtn = binding.requestLeaveBtn
+        sharedPreferences = requireActivity().getSharedPreferences("MyPrefs", Context.MODE_PRIVATE)
 
         clockHandler = Handler(Looper.getMainLooper())
         clockRunnable = object : Runnable {
@@ -102,21 +102,17 @@ class DashboardFragment : Fragment() {
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(requireActivity())
         requestLocationUpdates()
         fetchWeather()
-//        dashboardViewModel =
-//            ViewModelProvider(requireActivity()).get(DashboardViewModel::class.java)
-//        dashboardViewModel.attendance.observe(viewLifecycleOwner) { attendanceDisplay ->
-//            Log.d("exit", "${attendanceDisplay.clockInTime}")
-//        }
-        val sharedPreferences = requireActivity().getSharedPreferences("MyPrefs", Context.MODE_PRIVATE)
+
         val clockInTimeString = sharedPreferences.getString("clockInTimeString", "-")
         val clockOutTimeString = sharedPreferences.getString("clockOutTimeString", "-")
         val attendanceStatus = sharedPreferences.getString("attendanceStatus", "absent")
 
-        if(sharedPreferences.getString("toast","").equals("clockOut")){
+        val toast = sharedPreferences.getString("toast","")
+        if(toast.equals("clockOut")){
             Toast.makeText(requireContext(),"Succesfully clock out at ${clockOutTimeString}",Toast.LENGTH_SHORT).show()
-        } else if(sharedPreferences.getString("toast","").equals("clockIn")){
+        } else if(toast.equals("clockIn")){
             Toast.makeText(requireContext(),"Succesfully clock out at ${clockInTimeString}",Toast.LENGTH_SHORT).show()
-        } else if(sharedPreferences.getString("toast","").equals("error")){
+        } else if(toast.equals("error")){
             Toast.makeText(requireContext(),"You already completed clock in and clock out",Toast.LENGTH_SHORT).show()
         }
         val editor = sharedPreferences.edit()
@@ -213,6 +209,10 @@ class DashboardFragment : Fragment() {
                 for (location in locationResult.locations) {
                     lat = location.latitude
                     lon = location.longitude
+                    val editor = sharedPreferences.edit()
+                    editor.putString("lat", "$lat")
+                    editor.putString("lon", "$lon")
+                    editor.apply()
                     Log.d("weather", "$lat $lon")
                 }
             }
