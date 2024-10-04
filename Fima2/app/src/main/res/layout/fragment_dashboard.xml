@@ -104,7 +104,7 @@
             android:id="@+id/clockInTimeTV"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="06:00"
+            android:text="-"
             android:textAlignment="center"
             android:textSize="20sp"
             android:layout_marginTop="4dp" />
@@ -122,7 +122,7 @@
             android:id="@+id/clockOutTimeTV"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="06:00"
+            android:text="-"
             android:textAlignment="center"
             android:textSize="20sp"
             android:layout_marginTop="4dp" />
@@ -132,7 +132,7 @@
             android:id="@+id/attendanceStatusTV"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="leave early"
+            android:text="absent"
             android:textAlignment="center"
             android:textSize="20sp"
             android:layout_marginTop="4dp"
