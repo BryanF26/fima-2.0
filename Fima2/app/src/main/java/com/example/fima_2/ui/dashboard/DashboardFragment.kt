@@ -1,10 +1,8 @@
 package com.example.fima_2.ui.dashboard
 
-import WeatherResponse
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.location.Location
 import android.os.Bundle
 import android.os.Looper
 import android.util.Log
@@ -32,7 +30,6 @@ import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import java.text.SimpleDateFormat
 import java.util.Calendar
-import kotlin.math.log
 
 class DashboardFragment : Fragment() {
 

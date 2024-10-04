@@ -1,3 +1,5 @@
+package com.example.fima_2.ui.dashboard
+
 data class WeatherResponse(
     val coord: Coord,
     val weather: List<Weather>,
