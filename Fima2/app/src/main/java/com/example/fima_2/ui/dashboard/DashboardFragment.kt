@@ -6,6 +6,8 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.location.Location
 import android.os.Bundle
+import android.os.Looper
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -19,6 +21,9 @@ import com.example.fima_2.AttendanceActivity
 import com.example.fima_2.LeaveRequestActivity
 import com.example.fima_2.databinding.FragmentDashboardBinding
 import com.google.android.gms.location.FusedLocationProviderClient
+import com.google.android.gms.location.LocationCallback
+import com.google.android.gms.location.LocationRequest
+import com.google.android.gms.location.LocationResult
 import com.google.android.gms.location.LocationServices
 import retrofit2.Call
 import retrofit2.Callback
@@ -27,6 +32,7 @@ import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import java.text.SimpleDateFormat
 import java.util.Calendar
+import kotlin.math.log
 
 class DashboardFragment : Fragment() {
 
@@ -48,6 +54,8 @@ class DashboardFragment : Fragment() {
     // This property is only valid between onCreateView and
     // onDestroyView.
     private val binding get() = _binding!!
+    private var lat:Double = 0.0
+    private var lon:Double = 0.0
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -77,10 +85,9 @@ class DashboardFragment : Fragment() {
         val sdfDate = SimpleDateFormat("EEE dd MMMM yyyy")
         dateTV.text = sdfDate.format(calendar.time)
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(requireActivity())
-
-        // Check permissions and get location
-        getLocation()
+        requestLocationUpdates()
         fetchWeather()
+        // Check permissions and get location
         clockInBtn.setOnClickListener {
             val intent = Intent(activity, AttendanceActivity::class.java)
 
@@ -90,9 +97,13 @@ class DashboardFragment : Fragment() {
             // Start the target activity
             startActivity(intent)
         }
-//        clockInTimeTV.text =
-//        clockOutTimeTV.text =
-//        attendanceStatusTV.text =
+        dashboardViewModel.attendance.observe(viewLifecycleOwner) { attendanceList ->
+            // Update the adapter with new data
+            clockInTimeTV.text = attendanceList.clockInTime
+            clockOutTimeTV.text = attendanceList.clockOutTime
+            attendanceStatusTV.text = attendanceList.attendanceStatus
+        }
+
         requestLeaveBtn.setOnClickListener {
             val intent = Intent(activity, LeaveRequestActivity::class.java)
 
@@ -122,59 +133,28 @@ class DashboardFragment : Fragment() {
 
         val weatherService = retrofit.create(WeatherApiService::class.java)
 
-        val call = weatherService.getWeather("Jakarta", "8acc6f82522969085f144382938a7e5b")
+        val call = weatherService.getWeather(lat.toString(),lon.toString(), "8acc6f82522969085f144382938a7e5b")
         call.enqueue(object : Callback<WeatherResponse> {
             override fun onResponse(call: Call<WeatherResponse>, response: Response<WeatherResponse>) {
                 if (response.isSuccessful) {
                     val weather = response.body()
+                    Log.d("weather", "$weather")
                     // Update the UI with weather info
                     weather?.let {
-                        temperatureTV.text = it.temp.toString()
-                        humidityTV.text = it.humidity.toString()
-                        weatherDescTV.text = it.description
+                        temperatureTV.text = "${it.main.temp} K"
+                        humidityTV.text = it.main.humidity.toString()
+                        weatherDescTV.text = it.weather.first().description
                     }
                 }
             }
 
             override fun onFailure(call: Call<WeatherResponse>, t: Throwable) {
                 // Handle failure
+                temperatureTV.text = "N/A"
+                humidityTV.text = "N/A"
+                weatherDescTV.text = "N/A"
             }
         })
-    }
-
-    fun getLocation() {
-        // Check if location permissions are granted
-        if (ActivityCompat.checkSelfPermission(
-                requireContext(), Manifest.permission.ACCESS_FINE_LOCATION
-            ) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(
-                requireContext(), Manifest.permission.ACCESS_COARSE_LOCATION
-            ) != PackageManager.PERMISSION_GRANTED
-        ) {
-            // Request permissions if they are not already granted
-            ActivityCompat.requestPermissions(
-                requireActivity(), arrayOf(
-                    Manifest.permission.ACCESS_FINE_LOCATION,
-                    Manifest.permission.ACCESS_COARSE_LOCATION
-                ), LOCATION_PERMISSION_REQUEST_CODE
-            )
-            return
-        }
-
-        // Get last known location
-        fusedLocationClient.lastLocation
-            .addOnSuccessListener { location: Location? ->
-                if (location != null) {
-                    // Use the location here
-                    val latitude = location.latitude
-                    val longitude = location.longitude
-                    Toast.makeText(requireContext(), "Lat: $latitude, Lon: $longitude", Toast.LENGTH_SHORT).show()
-                } else {
-                    Toast.makeText(requireContext(), "Unable to get location", Toast.LENGTH_SHORT).show()
-                }
-            }
-            .addOnFailureListener {
-                Toast.makeText(requireContext(), "Failed to get location", Toast.LENGTH_SHORT).show()
-            }
     }
 
     // Handle the permission request result
@@ -185,10 +165,38 @@ class DashboardFragment : Fragment() {
         if (requestCode == LOCATION_PERMISSION_REQUEST_CODE) {
             if ((grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED)) {
                 // Permission was granted, proceed to get the location
-                getLocation()
+                requestLocationUpdates()
             } else {
                 Toast.makeText(requireContext(), "Location permission denied", Toast.LENGTH_SHORT).show()
             }
         }
     }
+
+    private fun requestLocationUpdates() {
+        val locationRequest = LocationRequest.create().apply {
+            interval = 10000 // 10 seconds
+            fastestInterval = 5000 // 5 seconds
+            priority = LocationRequest.PRIORITY_HIGH_ACCURACY
+        }
+
+        if (ActivityCompat.checkSelfPermission(
+                requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
+        ) {
+            ActivityCompat.requestPermissions(
+                requireActivity(), arrayOf(Manifest.permission.ACCESS_FINE_LOCATION), LOCATION_PERMISSION_REQUEST_CODE
+            )
+            return
+        }
+
+        fusedLocationClient.requestLocationUpdates(locationRequest, object : LocationCallback() {
+            override fun onLocationResult(locationResult: LocationResult) {
+                for (location in locationResult.locations) {
+                    lat = location.latitude
+                    lon = location.longitude
+                    Log.d("weather", "$lat $lon")
+                }
+            }
+        }, Looper.getMainLooper())
+    }
+
 }

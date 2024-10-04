@@ -7,8 +7,21 @@ import androidx.lifecycle.ViewModel
 
 class DashboardViewModel : ViewModel() {
 
-//    private val _attendance = MutableLiveData<Attendance>().apply {
-//        attendance = "This is dashboard Fragment"
-//    }
-//    val attendance: LiveData<String> = _attendance
+    private val _attendance = MutableLiveData<Attendance>()
+    val attendance: LiveData<Attendance> = _attendance
+
+    init {
+        // Load historical data for currency rates (could be from API, database, etc.)
+        loadAttedance()
+    }
+
+    private fun loadAttedance() {
+        // Simulated currency rate history data
+        _attendance.value = Attendance("08:00:00", "17:15:00", "On Time")
+    }
+
+    fun editAttendance(clockInTime: String,clockOutTime: String, attendanceStatus: String) {
+        val currentList = Attendance(clockInTime, clockOutTime, attendanceStatus)
+        _attendance.value = currentList
+    }
 }
