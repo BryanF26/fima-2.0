@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
+import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import android.view.LayoutInflater
@@ -50,6 +51,8 @@ class DashboardFragment : Fragment() {
     private lateinit var requestLeaveBtn: Button
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private val LOCATION_PERMISSION_REQUEST_CODE = 1
+    private lateinit var clockHandler: Handler
+    private lateinit var clockRunnable: Runnable
 
     // This property is only valid between onCreateView and
     // onDestroyView.
@@ -82,9 +85,18 @@ class DashboardFragment : Fragment() {
         attendanceStatusTV = binding.attendanceStatusTV
         requestLeaveBtn = binding.requestLeaveBtn
 
+        clockHandler = Handler(Looper.getMainLooper())
+        clockRunnable = object : Runnable {
+            override fun run() {
+                val calendar = Calendar.getInstance()
+                val sdfClock = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
+                clockTV.text = sdfClock.format(calendar.time)
+                clockHandler.postDelayed(this, 1000) // Update every second
+            }
+        }
+        clockHandler.post(clockRunnable)
+
         val calendar = Calendar.getInstance()
-        val sdfClock = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
-        clockTV.text = sdfClock.format(calendar.time)
         val sdfDate = SimpleDateFormat("EEE dd MMMM yyyy", Locale.getDefault())
         dateTV.text = sdfDate.format(calendar.time)
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(requireActivity())
