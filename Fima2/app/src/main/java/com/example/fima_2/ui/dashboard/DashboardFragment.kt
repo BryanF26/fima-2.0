@@ -99,9 +99,22 @@ class DashboardFragment : Fragment() {
         val calendar = Calendar.getInstance()
         val sdfDate = SimpleDateFormat("EEE dd MMMM yyyy", Locale.getDefault())
         dateTV.text = sdfDate.format(calendar.time)
+
+        val storedDateString = sharedPreferences.getString("storedDate", "")
+        val currentDateString = sdfDate.format(calendar.time)
+        // Check if the date has changed
+        if (storedDateString != currentDateString) {
+            // Reset attendance status and times
+            resetAttendanceData()
+
+            // Update stored date in SharedPreferences
+            val editor = sharedPreferences.edit()
+            editor.putString("storedDate", currentDateString)
+            editor.apply()
+        }
+
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(requireActivity())
         requestLocationUpdates()
-        fetchWeather()
 
         val clockInTimeString = sharedPreferences.getString("clockInTimeString", "-")
         val clockOutTimeString = sharedPreferences.getString("clockOutTimeString", "-")
@@ -214,9 +227,19 @@ class DashboardFragment : Fragment() {
                     editor.putString("lon", "$lon")
                     editor.apply()
                     Log.d("weather", "$lat $lon")
+
+                    fetchWeather()
                 }
             }
         }, Looper.getMainLooper())
+    }
+
+    private fun resetAttendanceData() {
+        val editor = sharedPreferences.edit()
+        editor.putString("clockInTimeString", null) // Reset clock in time
+        editor.putString("clockOutTimeString", null) // Reset clock out time
+        editor.putString("attendanceStatus", "absent") // Reset attendance status
+        editor.apply()
     }
 
 }
