@@ -35,13 +35,15 @@
             android:layout_width="200dp"
             android:inputType="date"
             android:layout_marginEnd="8dp"
+            android:hint="Click to input start date"
           />
 
         <EditText
             android:id="@+id/leaveDateET"
             android:layout_width="200dp"
             android:layout_height="wrap_content"
-            android:inputType="date" />
+            android:inputType="date"
+            android:hint="Click to input end date"/>
     </GridLayout>
 
     <Button

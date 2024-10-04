@@ -8,7 +8,10 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
+import android.view.View
 import android.widget.Button
+import android.widget.ImageView
+import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
@@ -34,7 +37,9 @@ class AttendanceActivity : AppCompatActivity() {
 
     private lateinit var imageCapture: ImageCapture
     private lateinit var viewFinder: PreviewView
+    private lateinit var capturedImageView: ImageView
     private lateinit var outputDirectory: File
+    private lateinit var captureButton: Button
 
     private lateinit var dashboardViewModel: DashboardViewModel
     private companion object {
@@ -52,27 +57,43 @@ class AttendanceActivity : AppCompatActivity() {
         // Initialize viewFinder
         viewFinder = findViewById(R.id.capturedImagePreview)  // Ensure the ID matches your XML
 
-        val captureButton: Button = findViewById(R.id.attendanceSubmitButton)
+        val clockButton: Button = findViewById(R.id.attendanceSubmitButton)
+        captureButton = findViewById(R.id.takePhotoButton)
+        captureButton.setOnClickListener { onCaptureButtonClick() }
+
+
 
         // Create the output directory for photos
         outputDirectory = getOutputDirectory()
 
-        captureButton.setOnClickListener {
-//            takePhoto()
+        clockButton.setOnClickListener {
+
             clockInOut(dashboardViewModel)
             val intent = Intent(this, MainActivity::class.java)
-            // Start the target activity
-            startActivity(intent)
+            startActivity(intent    )
         }
 
-        // Request permissions and start camera
-//        requestCameraPermissions()
+//         Request permissions and start camera
+        requestCameraPermissions()
     }
 
     private fun requestCameraPermissions() {
         val permissions = arrayOf(Manifest.permission.CAMERA, Manifest.permission.WRITE_EXTERNAL_STORAGE)
         ActivityCompat.requestPermissions(this, permissions, CAMERA_PERMISSION_REQUEST_CODE)
     }
+
+    private fun onCaptureButtonClick() {
+        if (captureButton.text == "Capture") {
+            takePhoto()
+        } else {
+            // If retaking, restart camera and reset UI
+            startCamera()
+            captureButton.text = "Capture"
+            capturedImageView.visibility = View.GONE
+            viewFinder.visibility = View.VISIBLE
+        }
+    }
+
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
@@ -117,10 +138,14 @@ class AttendanceActivity : AppCompatActivity() {
 
             override fun onImageSaved(output: ImageCapture.OutputFileResults) {
                 val savedUri = Uri.fromFile(photoFile)
-                // Handle the saved photo
+                capturedImageView.setImageURI(savedUri)
+                capturedImageView.visibility = View.VISIBLE
+                viewFinder.visibility = View.GONE
+                captureButton.text = "Retake"
             }
         })
     }
+
 
     private fun getOutputDirectory(): File {
         val mediaDir = externalMediaDirs.firstOrNull()?.let {
@@ -143,15 +168,20 @@ class AttendanceActivity : AppCompatActivity() {
         // Update the adapter with new data
 
         val sharedPreferences = this.getSharedPreferences("MyPrefs", Context.MODE_PRIVATE)
+        val editor = sharedPreferences.edit()
         var clockInTimeString = sharedPreferences.getString("clockInTimeString", null)
         var clockOutTimeString = sharedPreferences.getString("clockOutTimeString", null)
 
         val calendar = Calendar.getInstance()
         if(clockInTimeString == null) {
             clockInTimeString = formatter.format(calendar.time).toString()
+            editor.putString("toast", "clockIn")
         } else if (clockOutTimeString == null){
             clockOutTimeString = formatter.format(calendar.time).toString()
+            editor.putString("toast", "clockOut")
         } else {
+            editor.putString("toast", "error")
+            editor.apply()
             return
         }
         val clockInTime: Date? = clockInTimeString?.let { formatter.parse(it) }
@@ -184,7 +214,7 @@ class AttendanceActivity : AppCompatActivity() {
                 "Invalid"
             }
         }
-        val editor = sharedPreferences.edit()
+
         editor.putString("clockInTimeString", clockInTimeString)
         editor.putString("clockOutTimeString", clockOutTimeString)
         editor.putString("attendanceStatus", attendanceStatus)
