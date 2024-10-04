@@ -1,6 +1,7 @@
 package com.example.fima_2.ui.dashboard
 
 import android.Manifest
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
@@ -14,6 +15,7 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.core.app.ActivityCompat
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import com.example.fima_2.AttendanceActivity
 import com.example.fima_2.LeaveRequestActivity
@@ -30,6 +32,7 @@ import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import java.text.SimpleDateFormat
 import java.util.Calendar
+import java.util.Locale
 
 class DashboardFragment : Fragment() {
 
@@ -54,17 +57,20 @@ class DashboardFragment : Fragment() {
     private var lat:Double = 0.0
     private var lon:Double = 0.0
 
+    private lateinit var dashboardViewModel: DashboardViewModel
+
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        val dashboardViewModel =
-            ViewModelProvider(this).get(DashboardViewModel::class.java)
-
         _binding = FragmentDashboardBinding.inflate(inflater, container, false)
         val root: View = binding.root
+        return root
+    }
 
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
         clockTV = binding.clockTV
         dateTV = binding.dateTV
         temperatureTV = binding.temperatureTV
@@ -77,44 +83,37 @@ class DashboardFragment : Fragment() {
         requestLeaveBtn = binding.requestLeaveBtn
 
         val calendar = Calendar.getInstance()
-        val sdfClock = SimpleDateFormat("HH:mm:ss")
+        val sdfClock = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
         clockTV.text = sdfClock.format(calendar.time)
-        val sdfDate = SimpleDateFormat("EEE dd MMMM yyyy")
+        val sdfDate = SimpleDateFormat("EEE dd MMMM yyyy", Locale.getDefault())
         dateTV.text = sdfDate.format(calendar.time)
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(requireActivity())
         requestLocationUpdates()
         fetchWeather()
+//        dashboardViewModel =
+//            ViewModelProvider(requireActivity()).get(DashboardViewModel::class.java)
+//        dashboardViewModel.attendance.observe(viewLifecycleOwner) { attendanceDisplay ->
+//            Log.d("exit", "${attendanceDisplay.clockInTime}")
+//        }
+        val sharedPreferences = requireActivity().getSharedPreferences("MyPrefs", Context.MODE_PRIVATE)
+        val clockInTimeString = sharedPreferences.getString("clockInTimeString", "-")
+        val clockOutTimeString = sharedPreferences.getString("clockOutTimeString", "-")
+        val attendanceStatus = sharedPreferences.getString("attendanceStatus", "absent")
+        clockInTimeTV.text = clockInTimeString
+        clockOutTimeTV.text = clockOutTimeString
+        attendanceStatusTV.text = attendanceStatus
         // Check permissions and get location
         clockInBtn.setOnClickListener {
             val intent = Intent(activity, AttendanceActivity::class.java)
-
-            // Optionally, add some data to the intent
-            intent.putExtra("EXTRA_KEY", "Some data")
-
             // Start the target activity
             startActivity(intent)
-        }
-        dashboardViewModel.attendance.observe(viewLifecycleOwner) { attendanceList ->
-            // Update the adapter with new data
-            clockInTimeTV.text = attendanceList.clockInTime
-            clockOutTimeTV.text = attendanceList.clockOutTime
-            attendanceStatusTV.text = attendanceList.attendanceStatus
         }
 
         requestLeaveBtn.setOnClickListener {
             val intent = Intent(activity, LeaveRequestActivity::class.java)
-
-            // Optionally, add some data to the intent
-            intent.putExtra("EXTRA_KEY", "Some data")
-
             // Start the target activity
             startActivity(intent)
         }
-
-//        dashboardViewModel.text.observe(viewLifecycleOwner) {
-//            textView.text = it
-//        }
-        return root
     }
 
     override fun onDestroyView() {

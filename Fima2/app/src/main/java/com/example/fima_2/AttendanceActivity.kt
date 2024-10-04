@@ -1,11 +1,16 @@
 package com.example.fima_2
 
 import android.Manifest
+import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import android.widget.Button
 import androidx.activity.enableEdgeToEdge
+import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageCapture
@@ -15,9 +20,14 @@ import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.ViewModelProvider
 import com.example.fima_2.R
+import com.example.fima_2.ui.dashboard.Attendance
+import com.example.fima_2.ui.dashboard.DashboardViewModel
 import java.io.File
 import java.text.SimpleDateFormat
+import java.time.format.DateTimeFormatter
 import java.util.*
 
 class AttendanceActivity : AppCompatActivity() {
@@ -26,6 +36,7 @@ class AttendanceActivity : AppCompatActivity() {
     private lateinit var viewFinder: PreviewView
     private lateinit var outputDirectory: File
 
+    private lateinit var dashboardViewModel: DashboardViewModel
     private companion object {
         const val CAMERA_PERMISSION_REQUEST_CODE = 200
         const val FILENAME_FORMAT = "yyyy-MM-dd-HH-mm-ss-SSS"
@@ -36,6 +47,8 @@ class AttendanceActivity : AppCompatActivity() {
         enableEdgeToEdge()
         setContentView(R.layout.activity_attendance)
 
+        dashboardViewModel = ViewModelProvider(this).get(DashboardViewModel::class.java)
+
         // Initialize viewFinder
         viewFinder = findViewById(R.id.capturedImagePreview)  // Ensure the ID matches your XML
 
@@ -44,10 +57,16 @@ class AttendanceActivity : AppCompatActivity() {
         // Create the output directory for photos
         outputDirectory = getOutputDirectory()
 
-        captureButton.setOnClickListener { takePhoto() }
+        captureButton.setOnClickListener {
+//            takePhoto()
+            clockInOut(dashboardViewModel)
+            val intent = Intent(this, MainActivity::class.java)
+            // Start the target activity
+            startActivity(intent)
+        }
 
         // Request permissions and start camera
-        requestCameraPermissions()
+//        requestCameraPermissions()
     }
 
     private fun requestCameraPermissions() {
@@ -113,5 +132,64 @@ class AttendanceActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         // Clean up resources if needed
+    }
+
+
+
+    fun clockInOut(dashboardViewModel: DashboardViewModel){
+//        val dashboardViewModel =
+//            ViewModelProvider(this).get(DashboardViewModel::class.java)
+        val formatter = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
+        // Update the adapter with new data
+
+        val sharedPreferences = this.getSharedPreferences("MyPrefs", Context.MODE_PRIVATE)
+        var clockInTimeString = sharedPreferences.getString("clockInTimeString", null)
+        var clockOutTimeString = sharedPreferences.getString("clockOutTimeString", null)
+
+        val calendar = Calendar.getInstance()
+        if(clockInTimeString == null) {
+            clockInTimeString = formatter.format(calendar.time).toString()
+        } else if (clockOutTimeString == null){
+            clockOutTimeString = formatter.format(calendar.time).toString()
+        } else {
+            return
+        }
+        val clockInTime: Date? = clockInTimeString?.let { formatter.parse(it) }
+        val clockOutTime: Date? = clockOutTimeString?.let { formatter.parse(it) }
+
+
+        val attendanceStatus: String = when {
+            // Case 1: ClockInTime or ClockOutTime is null
+            clockInTime == null || clockOutTime == null -> {
+                "Absent"
+            }
+
+            // Case 2: On time (Clock in <= 08:00:00 and Clock out >= 17:00:00)
+            clockInTime <= formatter.parse("08:00:00") && clockOutTime >= formatter.parse("17:00:00") -> {
+                "OnTime"
+            }
+
+            // Case 3: Late Come (ClockInTime > 08:00:00)
+            clockInTime > formatter.parse("08:00:00") -> {
+                "Late Come"
+            }
+
+            // Case 4: Early Leave (ClockOutTime < 17:00:00)
+            clockOutTime < formatter.parse("17:00:00") -> {
+                "Early Leave"
+            }
+
+            // Default case: Handle unexpected scenarios
+            else -> {
+                "Invalid"
+            }
+        }
+        val editor = sharedPreferences.edit()
+        editor.putString("clockInTimeString", clockInTimeString)
+        editor.putString("clockOutTimeString", clockOutTimeString)
+        editor.putString("attendanceStatus", attendanceStatus)
+        editor.apply()
+//        dashboardViewModel.editAttendance(clockInTimeString, clockOutTimeString, attendanceStatus)
+//        Log.d("exit", "${dashboardViewModel.attendance.value?.clockInTime}")
     }
 }
