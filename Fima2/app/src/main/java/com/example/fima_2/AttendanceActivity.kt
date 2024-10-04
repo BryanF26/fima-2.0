@@ -40,6 +40,7 @@ class AttendanceActivity : AppCompatActivity() {
     private lateinit var capturedImageView: ImageView
     private lateinit var outputDirectory: File
     private lateinit var captureButton: Button
+    private lateinit var clockButton: Button
 
     private lateinit var dashboardViewModel: DashboardViewModel
     private companion object {
@@ -56,12 +57,14 @@ class AttendanceActivity : AppCompatActivity() {
 
         // Initialize viewFinder
         viewFinder = findViewById(R.id.capturedImagePreview)  // Ensure the ID matches your XML
-
-        val clockButton: Button = findViewById(R.id.attendanceSubmitButton)
+        clockButton =  findViewById(R.id.attendanceSubmitButton)
         captureButton = findViewById(R.id.takePhotoButton)
+        capturedImageView = findViewById(R.id.capturedImageView)
+
+
+        // Request permissions and start camera
+        requestCameraPermissions()
         captureButton.setOnClickListener { onCaptureButtonClick() }
-
-
 
         // Create the output directory for photos
         outputDirectory = getOutputDirectory()
@@ -73,8 +76,7 @@ class AttendanceActivity : AppCompatActivity() {
             startActivity(intent    )
         }
 
-//         Request permissions and start camera
-        requestCameraPermissions()
+
     }
 
     private fun requestCameraPermissions() {
