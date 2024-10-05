@@ -61,6 +61,7 @@ class LeaveRequestActivity : AppCompatActivity() {
             },
             year, month, day
         )
+        datePickerDialog.datePicker.minDate = calendar.timeInMillis
         datePickerDialog.show()
     }
 
